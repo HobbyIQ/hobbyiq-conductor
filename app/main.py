@@ -26,8 +26,8 @@ _origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_origins,
-    allow_methods=["POST", "GET", "OPTIONS"],
-    allow_headers=["Content-Type"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 
