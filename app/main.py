@@ -2,9 +2,10 @@ import logging
 import os
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Security
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.security import APIKeyHeader
 
 load_dotenv()  # no-op when env vars are already set (e.g. in production)
 
@@ -27,8 +28,17 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_origins,
     allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_headers=["Content-Type", "Authorization", "Ocp-Apim-Subscription-Key"],
 )
+
+_apim_header = APIKeyHeader(name="Ocp-Apim-Subscription-Key", auto_error=False)
+
+
+def verify_subscription_key(key: str = Security(_apim_header)) -> None:
+    """Validate the incoming Ocp-Apim-Subscription-Key when CONDUCTOR_SUBSCRIPTION_KEY is set."""
+    expected = os.environ.get("CONDUCTOR_SUBSCRIPTION_KEY")
+    if expected and key != expected:
+        raise HTTPException(status_code=401, detail="Invalid or missing subscription key")
 
 
 @app.get("/health")
@@ -37,7 +47,7 @@ def health_check():
     return {"status": "ok"}
 
 
-@app.post("/api/v1/query", response_model=QueryResponse)
+@app.post("/api/v1/query", response_model=QueryResponse, dependencies=[Depends(verify_subscription_key)])
 def query(request: QueryRequest):
     """Accept a natural-language hobby question and return an AI-generated answer."""
     logger.info("query user_id=%s query=%r", request.user_id, request.query)

@@ -23,8 +23,11 @@ AI-powered conductor service for sports-card and collectibles hobby queries, bui
 ```bash
 curl -X POST https://<your-container-app-host>/api/v1/query \
   -H "Content-Type: application/json" \
+  -H "Ocp-Apim-Subscription-Key: <your-conductor-subscription-key>" \
   -d '{"query":"Should I sell my Elly De La Cruz auto?", "user_id":"test-user"}'
 ```
+
+> **Note:** The `Ocp-Apim-Subscription-Key` header is only required when `CONDUCTOR_SUBSCRIPTION_KEY` is set on the server. Omit it during local development if you have not configured that env var.
 
 ## Local development
 
@@ -50,11 +53,15 @@ docker run -p 8000:8000 --env-file .env hobbyiq-conductor
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `AZURE_OPENAI_API_KEY` | ✅ | — | Azure OpenAI API key |
-| `AZURE_OPENAI_ENDPOINT` | ✅ | — | Azure OpenAI endpoint URL |
+| `AZURE_OPENAI_API_KEY` | ✅¹ | — | Azure OpenAI / AI Agent API key |
+| `AZURE_OPENAI_ENDPOINT` | ✅ | — | Azure OpenAI or AI Agent endpoint URL (e.g. `https://conductor-agent.services.ai.azure.com/`) |
 | `AZURE_OPENAI_DEPLOYMENT` | ✅ | — | Deployment / model name (e.g. `gpt-4o`) |
 | `AZURE_OPENAI_API_VERSION` | ❌ | `2025-01-01-preview` | API version string |
+| `AZURE_AGENT_SUBSCRIPTION_KEY` | ❌¹ | — | `Ocp-Apim-Subscription-Key` sent on every **outgoing** call to the Azure AI Agent. Required when the agent endpoint is fronted by Azure API Management. Also used as `api-key` fallback when `AZURE_OPENAI_API_KEY` is absent. |
+| `CONDUCTOR_SUBSCRIPTION_KEY` | ❌ | — | When set, every `POST /api/v1/query` request must supply `Ocp-Apim-Subscription-Key: <value>`. Leave unset to disable **incoming** key validation. |
 | `ALLOWED_ORIGINS` | ❌ | `*` | Comma-separated CORS origins (e.g. `https://app.hobbyiq.com`). Set explicitly in production. |
+
+¹ At least one of `AZURE_OPENAI_API_KEY` or `AZURE_AGENT_SUBSCRIPTION_KEY` must be provided.
 
 ## Client examples
 
@@ -65,7 +72,10 @@ The server returns `Access-Control-Allow-Origin` headers so browser clients work
 ```js
 fetch('https://<your-container-app-host>/api/v1/query', {
   method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
+  headers: {
+    'Content-Type': 'application/json',
+    'Ocp-Apim-Subscription-Key': '<your-conductor-subscription-key>',
+  },
   body: JSON.stringify({ query: 'Should I buy or hold?', user_id: 'webuser' })
 })
   .then(res => {
@@ -108,6 +118,9 @@ func askHobbyIQ(question: String, userId: String, completion: @escaping (Result<
     var request = URLRequest(url: url)
     request.httpMethod = "POST"
     request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+    if let conductorKey = ProcessInfo.processInfo.environment["CONDUCTOR_SUBSCRIPTION_KEY"] {
+        request.addValue(conductorKey, forHTTPHeaderField: "Ocp-Apim-Subscription-Key")
+    }
 
     let body = QueryRequest(query: question, userId: userId)
     request.httpBody = try? JSONEncoder().encode(body)
@@ -155,6 +168,7 @@ askHobbyIQ(question: "Should I buy or hold?", userId: "test123") { result in
 
 | HTTP status | Meaning |
 |-------------|---------|
+| `401` | Missing or invalid `Ocp-Apim-Subscription-Key` (only when `CONDUCTOR_SUBSCRIPTION_KEY` is configured) |
 | `422` | Invalid request body (missing `query` or `user_id`) |
 | `502` | Azure OpenAI upstream error |
 | `500` | Unexpected server error |

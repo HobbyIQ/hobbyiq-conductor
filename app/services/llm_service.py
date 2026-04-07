@@ -11,10 +11,19 @@ collector. Be concise, friendly, and actionable."""
 
 
 def _get_client() -> AzureOpenAI:
+    subscription_key = os.environ.get("AZURE_AGENT_SUBSCRIPTION_KEY")
+    # Prefer the explicit API key; fall back to the APIM subscription key only when absent
+    api_key = (
+        os.environ["AZURE_OPENAI_API_KEY"]
+        if "AZURE_OPENAI_API_KEY" in os.environ
+        else subscription_key
+    )
+    extra_headers = {"Ocp-Apim-Subscription-Key": subscription_key} if subscription_key else {}
     return AzureOpenAI(
-        api_key=os.environ["AZURE_OPENAI_API_KEY"],
+        api_key=api_key,
         azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
         api_version=os.environ.get("AZURE_OPENAI_API_VERSION", "2025-01-01-preview"),
+        default_headers=extra_headers,
     )
 
 
