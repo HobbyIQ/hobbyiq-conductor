@@ -53,9 +53,28 @@ docker run -p 8000:8000 --env-file .env hobbyiq-conductor
 | `AZURE_OPENAI_API_KEY` | ✅ | — | Azure OpenAI API key |
 | `AZURE_OPENAI_ENDPOINT` | ✅ | — | Azure OpenAI endpoint URL |
 | `AZURE_OPENAI_DEPLOYMENT` | ✅ | — | Deployment / model name (e.g. `gpt-4o`) |
-| `AZURE_OPENAI_API_VERSION` | ❌ | `2024-02-01` | API version string |
+| `AZURE_OPENAI_API_VERSION` | ❌ | `2025-01-01-preview` | API version string |
+| `ALLOWED_ORIGINS` | ❌ | `*` | Comma-separated CORS origins (e.g. `https://app.hobbyiq.com`). Set explicitly in production. |
 
 ## Client examples
+
+### JavaScript / Browser (fetch)
+
+The server returns `Access-Control-Allow-Origin` headers so browser clients work out of the box. Set `ALLOWED_ORIGINS` to your web app's origin in production (see [Environment variables](#environment-variables)).
+
+```js
+fetch('https://<your-container-app-host>/api/v1/query', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ query: 'Should I buy or hold?', user_id: 'webuser' })
+})
+  .then(res => {
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  })
+  .then(data => console.log(data.answer))
+  .catch(err => console.error(err));
+```
 
 ### iOS / Swift (URLSession)
 

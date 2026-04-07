@@ -1,7 +1,9 @@
 import logging
+import os
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 load_dotenv()  # no-op when env vars are already set (e.g. in production)
@@ -16,6 +18,16 @@ app = FastAPI(
     title="HobbyIQ Conductor",
     description="AI-powered conductor for sports-card and collectibles hobby queries.",
     version="1.0.0",
+)
+
+_raw_origins = os.environ.get("ALLOWED_ORIGINS", "*")
+_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_origins,
+    allow_methods=["POST", "GET", "OPTIONS"],
+    allow_headers=["Content-Type"],
 )
 
 
