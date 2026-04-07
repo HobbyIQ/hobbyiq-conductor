@@ -63,6 +63,29 @@ docker run -p 8000:8000 --env-file .env hobbyiq-conductor
 
 ¹ At least one of `AZURE_OPENAI_API_KEY` or `AZURE_AGENT_SUBSCRIPTION_KEY` must be provided.
 
+## Deployment
+
+The service is deployed to **Azure Container Apps** via the [`deploy.yml`](.github/workflows/deploy.yml) GitHub Actions workflow.
+
+The workflow runs automatically on every push to `main`:
+
+1. Builds a Docker image from the `Dockerfile`
+2. Pushes the image to Azure Container Registry (ACR)
+3. Updates the Azure Container App to run the new image
+
+### Required GitHub repository secrets
+
+| Secret | Description |
+|--------|-------------|
+| `AZURE_CREDENTIALS` | JSON output of `az ad sp create-for-rbac` |
+| `REGISTRY_LOGIN_SERVER` | ACR login server (e.g. `myregistry.azurecr.io`) |
+| `REGISTRY_USERNAME` | ACR admin username |
+| `REGISTRY_PASSWORD` | ACR admin password |
+| `RESOURCE_GROUP` | Azure resource group containing the Container App |
+| `CONTAINER_APP_NAME` | Name of the Azure Container App resource |
+
+Once deployed, the Container App URL replaces the `<your-container-app-host>` placeholder in the examples below.
+
 ## Client examples
 
 ### JavaScript / Browser (fetch)
