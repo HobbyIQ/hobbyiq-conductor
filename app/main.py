@@ -1,7 +1,10 @@
 import logging
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
+
+load_dotenv()  # no-op when env vars are already set (e.g. in production)
 
 from app.models import QueryRequest, QueryResponse
 from app.services.llm_service import answer_hobby_query
