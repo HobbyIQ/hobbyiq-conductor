@@ -1,0 +1,41 @@
+import logging
+
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
+
+from app.models import QueryRequest, QueryResponse
+from app.services.llm_service import answer_hobby_query
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+app = FastAPI(
+    title="HobbyIQ Conductor",
+    description="AI-powered conductor for sports-card and collectibles hobby queries.",
+    version="1.0.0",
+)
+
+
+@app.get("/health")
+def health_check():
+    """Liveness / readiness probe used by Azure Container Apps."""
+    return {"status": "ok"}
+
+
+@app.post("/api/v1/query", response_model=QueryResponse)
+def query(request: QueryRequest):
+    """Accept a natural-language hobby question and return an AI-generated answer."""
+    logger.info("query user_id=%s query=%r", request.user_id, request.query)
+    try:
+        answer = answer_hobby_query(request.query)
+    except Exception as exc:
+        logger.exception("LLM call failed: %s", exc)
+        raise HTTPException(status_code=502, detail="Upstream AI service error") from exc
+
+    return QueryResponse(user_id=request.user_id, query=request.query, answer=answer)
+
+
+@app.exception_handler(Exception)
+async def generic_exception_handler(request, exc):
+    logger.exception("Unhandled error: %s", exc)
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
